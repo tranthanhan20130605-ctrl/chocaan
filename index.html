@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Máy cho cá ăn</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#eaf2ff;background:#0b1220}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px}
+main{width:min(100%,520px);background:#131e31;border:1px solid #263751;border-radius:22px;padding:22px;box-shadow:0 16px 50px #0005}
+h1{font-size:1.55rem;margin:0 0 6px}p{color:#b9c8df;line-height:1.5}.sub{margin-top:0;font-size:.95rem}
+label{display:block;font-weight:650;margin:14px 0 6px}
+input{width:100%;padding:12px;border:1px solid #3a4c68;border-radius:10px;background:#0b1424;color:#fff;font-size:1rem}
+button{border:0;border-radius:12px;padding:13px 15px;font-size:1rem;font-weight:750;cursor:pointer}
+.primary{background:#20b99a;color:#06251f;width:100%;margin-top:16px}.secondary{background:#263852;color:#fff;width:100%;margin-top:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid button{background:#263852;color:#fff}.danger{background:#6e2c3c!important}
+.card{background:#0b1424;border:1px solid #293b55;border-radius:14px;padding:14px;margin-top:14px}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.muted{color:#a9bad2;font-size:.9rem}
+.status{font-weight:700;color:#ffd166}.hidden{display:none!important}
+.notice{font-size:.84rem;color:#9eb1cb;margin-top:16px}
+</style>
+</head>
+<body>
+<main>
+  <h1>🐟 Máy cho cá ăn</h1>
+  <p class="sub">Bảng điều khiển từ xa · ESP32 + SG90</p>
+
+  <section id="loginPanel">
+    <div class="card">
+      <strong>Đăng nhập</strong>
+      <label for="email">Email Firebase</label>
+      <input id="email" type="email" autocomplete="username" placeholder="email của bạn">
+      <label for="password">Mật khẩu</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="Mật khẩu Firebase">
+      <button class="primary" id="loginBtn">Đăng nhập</button>
+      <p class="muted" id="loginMessage" aria-live="polite">Dùng tài khoản đã tạo trong Firebase Authentication.</p>
+    </div>
+  </section>
+
+  <section id="controlPanel" class="hidden">
+    <div class="card">
+      <div class="row"><span class="muted">Tài khoản</span><span id="userLabel">Đã đăng nhập</span></div>
+      <div class="row" style="margin-top:10px"><span class="muted">Trạng thái ESP32</span><span class="status" id="status">Chưa có dữ liệu</span></div>
+      <div class="row" style="margin-top:10px"><span class="muted">Thời gian cài đặt</span><strong><span id="intervalLabel">30</span> phút</strong></div>
+    </div>
+    <button class="primary" id="feedBtn">🍽️ CHO CÁ ĂN NGAY</button>
+    <div class="grid" style="margin-top:10px">
+      <button id="minusBtn">− 1 phút</button><button id="plusBtn">+ 1 phút</button>
+      <button id="minus10Btn">− 10 phút</button><button id="plus10Btn">+ 10 phút</button>
+    </div>
+    <button class="secondary" id="saveBtn">Lưu thời gian</button>
+    <button class="secondary danger" id="logoutBtn">Đăng xuất</button>
+    <p class="muted" id="controlMessage" aria-live="polite"></p>
+  </section>
+  <p class="notice">Lưu ý: trang web chỉ gửi lệnh qua Firebase. ESP32 cần được nạp firmware tương thích và có Internet. Không dùng để điều khiển servo nếu chưa kiểm tra cơ cấu xả thức ăn an toàn.</p>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import { getDatabase, ref, get, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+/*
+  DÁN CẤU HÌNH WEB CỦA BẠN VÀO ĐÂY.
+  Firebase Console > Cài đặt dự án > Ứng dụng của bạn > Ứng dụng web > Config.
+  databaseURL và các trường còn lại đã được điền theo thông tin bạn gửi. API key được nhập đúng như tin nhắn của bạn; nếu đăng nhập báo lỗi cấu hình/API key, hãy kiểm tra lại giá trị này trong Firebase.
+*/
+const firebaseConfig = {
+  apiKey: "AIzaSyA7TMuCoNnjg_2vjRX1vA2wcoHK@zy4x0w",
+  authDomain: "chocaan-1ab5d.firebaseapp.com",
+  databaseURL: "https://chocaan-1ab5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chocaan-1ab5d",
+  storageBucket: "chocaan-1ab5d.firebasestorage.app",
+  messagingSenderId: "945930258736",
+  appId: "1:945930258736:web:ba6e7cadde4ef243bb60f5",
+  measurementId: "G-FJ29DVKKHT"
+};
+
+const $ = id => document.getElementById(id);
+const loginPanel = $("loginPanel"), controlPanel = $("controlPanel");
+let app, auth, db, feederRef, stopListener = null;
+let intervalMin = 30;
+const sayLogin = text => $("loginMessage").textContent = text;
+const sayControl = text => $("controlMessage").textContent = text;
+const validConfig = () => Boolean(firebaseConfig.apiKey) &&
+  firebaseConfig.messagingSenderId === "945930258736" &&
+  firebaseConfig.appId === "1:945930258736:web:ba6e7cadde4ef243bb60f5";
+
+if (validConfig()) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getDatabase(app);
+  } catch (e) { sayLogin("Lỗi cấu hình Firebase: " + e.message); }
+} else {
+  sayLogin("Cần điền apiKey, messagingSenderId và appId từ cấu hình ứng dụng web Firebase trước khi đăng nhập.");
+}
+
+$("loginBtn").addEventListener("click", async () => {
+  if (!auth) { sayLogin("Bạn cần điền cấu hình Firebase trong file HTML trước."); return; }
+  const email = $("email").value.trim(), password = $("password").value;
+  if (!email || !password) { sayLogin("Hãy nhập email và mật khẩu."); return; }
+  $("loginBtn").disabled = true;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    sayLogin("");
+  } catch (e) {
+    sayLogin("Không đăng nhập được: " + e.message);
+  } finally { $("loginBtn").disabled = false; }
+});
+
+if (auth) onAuthStateChanged(auth, user => {
+  loginPanel.classList.toggle("hidden", !!user);
+  controlPanel.classList.toggle("hidden", !user);
+  if (!user) {
+    if (stopListener) { stopListener(); stopListener = null; }
+    return;
+  }
+  $("userLabel").textContent = user.email || "Đã đăng nhập";
+  feederRef = ref(db, "feeder");
+  if (stopListener) stopListener();
+  stopListener = onValue(feederRef, snap => {
+    const data = snap.val() || {};
+    if (Number.isFinite(Number(data.intervalMin))) intervalMin = Math.min(1440, Math.max(1, Number(data.intervalMin)));
+    $("intervalLabel").textContent = intervalMin;
+    $("status").textContent = data.status || "Đang chờ ESP32";
+  }, err => sayControl("Không đọc được dữ liệu: " + err.message));
+});
+
+async function updateInterval() {
+  intervalMin = Math.min(1440, Math.max(1, intervalMin));
+  $("intervalLabel").textContent = intervalMin;
+  try {
+    await set(ref(db, "feeder/intervalMin"), intervalMin);
+    await set(ref(db, "feeder/updatedAt"), Date.now());
+    sayControl("Đã gửi thời gian mới. ESP32 cần có firmware tương thích.");
+  } catch (e) { sayControl("Chưa lưu được: " + e.message); }
+}
+$("plusBtn").onclick = () => { intervalMin++; updateInterval(); };
+$("minusBtn").onclick = () => { intervalMin--; updateInterval(); };
+$("plus10Btn").onclick = () => { intervalMin += 10; updateInterval(); };
+$("minus10Btn").onclick = () => { intervalMin -= 10; updateInterval(); };
+$("saveBtn").onclick = updateInterval;
+$("feedBtn").onclick = async () => {
+  if (!db) return;
+  try {
+    await set(ref(db, "feeder/command"), "FEED");
+    await set(ref(db, "feeder/commandAt"), Date.now());
+    sayControl("Đã gửi lệnh cho ăn. Chỉ hoạt động khi ESP32 đã được nạp code nhận lệnh.");
+  } catch (e) { sayControl("Chưa gửi được lệnh: " + e.message); }
+};
+$("logoutBtn").onclick = async () => { try { await signOut(auth); } catch (e) { sayControl(e.message); } };
+</script>
+</body>
+</html>
