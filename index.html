@@ -1,154 +1,254 @@
 <!doctype html>
 <html lang="vi">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Máy cho cá ăn</title>
-<style>
-:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#eaf2ff;background:#0b1220}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px}
-main{width:min(100%,520px);background:#131e31;border:1px solid #263751;border-radius:22px;padding:22px;box-shadow:0 16px 50px #0005}
-h1{font-size:1.55rem;margin:0 0 6px}p{color:#b9c8df;line-height:1.5}.sub{margin-top:0;font-size:.95rem}
-label{display:block;font-weight:650;margin:14px 0 6px}
-input{width:100%;padding:12px;border:1px solid #3a4c68;border-radius:10px;background:#0b1424;color:#fff;font-size:1rem}
-button{border:0;border-radius:12px;padding:13px 15px;font-size:1rem;font-weight:750;cursor:pointer}
-.primary{background:#20b99a;color:#06251f;width:100%;margin-top:16px}.secondary{background:#263852;color:#fff;width:100%;margin-top:10px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid button{background:#263852;color:#fff}.danger{background:#6e2c3c!important}
-.card{background:#0b1424;border:1px solid #293b55;border-radius:14px;padding:14px;margin-top:14px}
-.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.muted{color:#a9bad2;font-size:.9rem}
-.status{font-weight:700;color:#ffd166}.hidden{display:none!important}
-.notice{font-size:.84rem;color:#9eb1cb;margin-top:16px}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Máy cho cá ăn tự động</title>
+  <style>
+    :root { color-scheme: light; --blue:#1677ff; --bg:#f3f7fc; --ink:#152238; --muted:#617086; --line:#dbe4ef; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+    main { width:min(720px, 100%); margin:0 auto; padding:20px 14px 40px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:18px; padding:18px; margin:14px 0; box-shadow:0 5px 20px #1b35520b; }
+    h1 { font-size:1.55rem; margin:6px 0; } h2 { font-size:1.1rem; margin:0 0 12px; }
+    p { line-height:1.5; } .muted { color:var(--muted); font-size:.92rem; }
+    label { display:block; font-weight:600; margin:10px 0 6px; }
+    input { width:100%; padding:11px 12px; border:1px solid #bdcad9; border-radius:10px; font:inherit; background:white; color:var(--ink); }
+    button { border:0; border-radius:11px; padding:11px 15px; font:inherit; font-weight:700; cursor:pointer; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .primary { background:var(--blue); color:#fff; } .secondary { background:#eaf2ff; color:#174c9a; } .danger { background:#fff0f0; color:#a12424; }
+    .row { display:flex; gap:10px; align-items:center; } .row > * { flex:1; }
+    .time-row { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; margin:9px 0; }
+    .pill { display:inline-block; border-radius:999px; padding:5px 10px; background:#edf2f8; font-size:.85rem; }
+    .ok { color:#137a3a; } .err { color:#b42318; } .status { overflow-wrap:anywhere; }
+    .hidden { display:none !important; }
+    #notice { white-space:pre-wrap; margin-top:12px; font-size:.93rem; }
+    @media (max-width:440px) { .card { padding:15px; } .row { flex-direction:column; align-items:stretch; } }
+  </style>
 </head>
 <body>
 <main>
-  <h1>🐟 Máy cho cá ăn</h1>
-  <p class="sub">Bảng điều khiển từ xa · ESP32 + SG90</p>
+  <header>
+    <div class="pill">ESP8266 NodeMCU · Wi-Fi · Firebase</div>
+    <h1>🐟 Máy cho cá ăn tự động</h1>
+    <p class="muted">Cài giờ cho ăn cố định hoặc cho cá ăn thủ công.</p>
+  </header>
 
-  <section id="loginPanel">
-    <div class="card">
-      <strong>Đăng nhập</strong>
-      <label for="email">Email Firebase</label>
-      <input id="email" type="email" autocomplete="username" placeholder="email của bạn">
-      <label for="password">Mật khẩu</label>
-      <input id="password" type="password" autocomplete="current-password" placeholder="Mật khẩu Firebase">
+  <section class="card" id="loginCard">
+    <h2>Đăng nhập</h2>
+    <p class="muted">Dùng tài khoản Firebase Authentication đã bật Email/Password.</p>
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="Email Firebase">
+    <label for="password">Mật khẩu</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="Mật khẩu Firebase">
+    <div style="margin-top:14px" class="row">
       <button class="primary" id="loginBtn">Đăng nhập</button>
-      <p class="muted" id="loginMessage" aria-live="polite">Dùng tài khoản đã tạo trong Firebase Authentication.</p>
+      <button class="secondary" id="logoutBtn" disabled>Đăng xuất</button>
     </div>
   </section>
 
-  <section id="controlPanel" class="hidden">
-    <div class="card">
-      <div class="row"><span class="muted">Tài khoản</span><span id="userLabel">Đã đăng nhập</span></div>
-      <div class="row" style="margin-top:10px"><span class="muted">Trạng thái ESP32</span><span class="status" id="status">Chưa có dữ liệu</span></div>
-      <div class="row" style="margin-top:10px"><span class="muted">Thời gian cài đặt</span><strong><span id="intervalLabel">30</span> phút</strong></div>
-    </div>
-    <button class="primary" id="feedBtn">🍽️ CHO CÁ ĂN NGAY</button>
-    <div class="grid" style="margin-top:10px">
-      <button id="minusBtn">− 1 phút</button><button id="plusBtn">+ 1 phút</button>
-      <button id="minus10Btn">− 10 phút</button><button id="plus10Btn">+ 10 phút</button>
-    </div>
-    <button class="secondary" id="saveBtn">Lưu thời gian</button>
-    <button class="secondary danger" id="logoutBtn">Đăng xuất</button>
-    <p class="muted" id="controlMessage" aria-live="polite"></p>
+  <section class="card">
+    <h2>Trạng thái thiết bị</h2>
+    <p>Trạng thái: <strong id="deviceStatus" class="status">Chưa kết nối</strong></p>
+    <p>Giờ thiết bị cập nhật: <span id="updatedAt" class="muted">—</span></p>
+    <p class="muted">Trạng thái chỉ cập nhật khi ESP8266 kết nối được Wi-Fi và Firebase.</p>
   </section>
-  <p class="notice">Lưu ý: trang web chỉ gửi lệnh qua Firebase. ESP32 cần được nạp firmware tương thích và có Internet. Không dùng để điều khiển servo nếu chưa kiểm tra cơ cấu xả thức ăn an toàn.</p>
+
+  <section class="card">
+    <h2>⏰ Lịch cho ăn cố định mỗi ngày</h2>
+    <p class="muted">Thêm các giờ như 07:00, 12:00, 18:00. ESP8266 sẽ dùng giờ Việt Nam (UTC+7).</p>
+    <div id="timesList"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="addTimeBtn" class="secondary" type="button">+ Thêm giờ</button>
+      <button id="saveTimesBtn" class="primary" type="button">Lưu lịch</button>
+    </div>
+    <p class="muted">Các giờ trùng nhau sẽ tự được loại bỏ khi lưu.</p>
+  </section>
+
+  <section class="card">
+    <h2>🍽️ Cho cá ăn thủ công</h2>
+    <p class="muted">Nhấn một lần để gửi lệnh cho servo. Đợi thông báo hoàn tất trước khi nhấn tiếp.</p>
+    <button id="feedBtn" class="primary" style="width:100%;font-size:1.05rem" disabled>Cho cá ăn ngay</button>
+    <p id="feedInfo" class="muted">Đăng nhập để điều khiển thiết bị.</p>
+  </section>
+
+  <section class="card">
+    <h2>Thông báo</h2>
+    <div id="notice" role="status" aria-live="polite">Đang tải trang…</div>
+  </section>
 </main>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-import { getDatabase, ref, get, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import {
+    getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import {
+    getDatabase, ref, onValue, update, set
+  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 
-/*
-  DÁN CẤU HÌNH WEB CỦA BẠN VÀO ĐÂY.
-  Firebase Console > Cài đặt dự án > Ứng dụng của bạn > Ứng dụng web > Config.
-  databaseURL và các trường còn lại đã được điền theo thông tin bạn gửi. API key được nhập đúng như tin nhắn của bạn; nếu đăng nhập báo lỗi cấu hình/API key, hãy kiểm tra lại giá trị này trong Firebase.
-*/
-const firebaseConfig = {
-  apiKey: "AIzaSyA7TMuCoNnjg_2vjRX1vA2wcoHK0zy4xOw",
-  authDomain: "chocaan-1ab5d.firebaseapp.com",
-  databaseURL: "https://chocaan-1ab5d-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "chocaan-1ab5d",
-  storageBucket: "chocaan-1ab5d.firebasestorage.app",
-  messagingSenderId: "945930258736",
-  appId: "1:945930258736:web:ba6e7cadde4ef243bb60f5",
-  measurementId: "G-FJ29DVKKHT"
-};
-const $ = id => document.getElementById(id);
-const loginPanel = $("loginPanel"), controlPanel = $("controlPanel");
-let app, auth, db, feederRef, stopListener = null;
-let intervalMin = 30;
-const sayLogin = text => $("loginMessage").textContent = text;
-const sayControl = text => $("controlMessage").textContent = text;
-const validConfig = () => Boolean(firebaseConfig.apiKey) &&
-  firebaseConfig.messagingSenderId === "945930258736" &&
-  firebaseConfig.appId === "1:945930258736:web:ba6e7cadde4ef243bb60f5";
+  // GIỮ CẤU HÌNH WEB FIREBASE ĐANG DÙNG NẾU BẠN ĐÃ CÓ.
+  // Lấy trong Firebase Console > Project settings > Your apps > Web app.
+  const firebaseConfig = {
+    apiKey: "YOUR_FIREBASE_WEB_API_KEY",
+    authDomain: "chocaan-1ab5d.firebaseapp.com",
+    databaseURL: "https://chocaan-1ab5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "chocaan-1ab5d",
+    storageBucket: "chocaan-1ab5d.firebasestorage.app",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_FIREBASE_WEB_APP_ID"
+  };
 
-if (validConfig()) {
-  try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getDatabase(app);
-  } catch (e) { sayLogin("Lỗi cấu hình Firebase: " + e.message); }
-} else {
-  sayLogin("Cần điền apiKey, messagingSenderId và appId từ cấu hình ứng dụng web Firebase trước khi đăng nhập.");
-}
+  const $ = id => document.getElementById(id);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+  let currentUser = null;
+  let unsubscribeFeeder = null;
+  let feedPending = false;
+  let times = ["07:00", "12:00", "18:00"];
 
-$("loginBtn").addEventListener("click", async () => {
-  if (!auth) { sayLogin("Bạn cần điền cấu hình Firebase trong file HTML trước."); return; }
-  const email = $("email").value.trim(), password = $("password").value;
-  if (!email || !password) { sayLogin("Hãy nhập email và mật khẩu."); return; }
-  $("loginBtn").disabled = true;
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    sayLogin("");
-  } catch (e) {
-    sayLogin("Không đăng nhập được: " + e.message);
-  } finally { $("loginBtn").disabled = false; }
-});
-
-if (auth) onAuthStateChanged(auth, user => {
-  loginPanel.classList.toggle("hidden", !!user);
-  controlPanel.classList.toggle("hidden", !user);
-  if (!user) {
-    if (stopListener) { stopListener(); stopListener = null; }
-    return;
+  function notice(message, error=false) {
+    $("notice").textContent = message;
+    $("notice").className = error ? "err" : "ok";
   }
-  $("userLabel").textContent = user.email || "Đã đăng nhập";
-  feederRef = ref(db, "feeder");
-  if (stopListener) stopListener();
-  stopListener = onValue(feederRef, snap => {
-    const data = snap.val() || {};
-    if (Number.isFinite(Number(data.intervalMin))) intervalMin = Math.min(1440, Math.max(1, Number(data.intervalMin)));
-    $("intervalLabel").textContent = intervalMin;
-    $("status").textContent = data.status || "Đang chờ ESP32";
-  }, err => sayControl("Không đọc được dữ liệu: " + err.message));
-});
 
-async function updateInterval() {
-  intervalMin = Math.min(1440, Math.max(1, intervalMin));
-  $("intervalLabel").textContent = intervalMin;
-  try {
-    await set(ref(db, "feeder/intervalMin"), intervalMin);
-    await set(ref(db, "feeder/updatedAt"), Date.now());
-    sayControl("Đã gửi thời gian mới. ESP32 cần có firmware tương thích.");
-  } catch (e) { sayControl("Chưa lưu được: " + e.message); }
-}
-$("plusBtn").onclick = () => { intervalMin++; updateInterval(); };
-$("minusBtn").onclick = () => { intervalMin--; updateInterval(); };
-$("plus10Btn").onclick = () => { intervalMin += 10; updateInterval(); };
-$("minus10Btn").onclick = () => { intervalMin -= 10; updateInterval(); };
-$("saveBtn").onclick = updateInterval;
-$("feedBtn").onclick = async () => {
-  if (!db) return;
-  try {
-    await set(ref(db, "feeder/command"), "FEED");
-    await set(ref(db, "feeder/commandAt"), Date.now());
-    sayControl("Đã gửi lệnh cho ăn. Chỉ hoạt động khi ESP32 đã được nạp code nhận lệnh.");
-  } catch (e) { sayControl("Chưa gửi được lệnh: " + e.message); }
-};
-$("logoutBtn").onclick = async () => { try { await signOut(auth); } catch (e) { sayControl(e.message); } };
+  function renderTimes() {
+    const root = $("timesList");
+    root.replaceChildren();
+    if (!times.length) {
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = "Chưa có giờ ăn. Hãy thêm ít nhất một giờ rồi lưu.";
+      root.appendChild(p);
+      return;
+    }
+    times.forEach((time, index) => {
+      const row = document.createElement("div");
+      row.className = "time-row";
+      const input = document.createElement("input");
+      input.type = "time";
+      input.value = time;
+      input.setAttribute("aria-label", `Giờ ăn ${index + 1}`);
+      input.addEventListener("change", () => { times[index] = input.value; });
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "danger";
+      remove.textContent = "Xóa";
+      remove.addEventListener("click", () => {
+        times.splice(index, 1);
+        renderTimes();
+      });
+      row.append(input, remove);
+      root.appendChild(row);
+    });
+  }
+
+  function normalizeTimes() {
+    return [...new Set(times.filter(t => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)))].sort();
+  }
+
+  $("addTimeBtn").addEventListener("click", () => {
+    if (times.length >= 12) return notice("Chỉ nên cài tối đa 12 giờ ăn mỗi ngày.", true);
+    times.push("20:00");
+    renderTimes();
+  });
+
+  $("loginBtn").addEventListener("click", async () => {
+    try {
+      $("loginBtn").disabled = true;
+      await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
+      notice("Đăng nhập thành công.");
+    } catch (e) {
+      notice("Đăng nhập thất bại: " + e.message, true);
+    } finally {
+      $("loginBtn").disabled = false;
+    }
+  });
+
+  $("logoutBtn").addEventListener("click", async () => {
+    try { await signOut(auth); notice("Đã đăng xuất."); }
+    catch (e) { notice("Không đăng xuất được: " + e.message, true); }
+  });
+
+  $("saveTimesBtn").addEventListener("click", async () => {
+    if (!currentUser) return notice("Hãy đăng nhập trước khi lưu lịch.", true);
+    const clean = normalizeTimes();
+    if (!clean.length) return notice("Hãy thêm ít nhất một giờ hợp lệ.", true);
+    try {
+      $("saveTimesBtn").disabled = true;
+      // Lưu lịch dưới dạng object: { "07:00": true, "18:00": true }
+      const schedule = {};
+      clean.forEach(t => schedule[t] = true);
+      await update(ref(db, "feeder"), {
+        scheduleTimes: schedule,
+        updatedAt: Date.now()
+      });
+      times = clean;
+      renderTimes();
+      notice("Đã lưu lịch: " + clean.join(", "));
+    } catch (e) {
+      notice("Không lưu được lịch: " + e.message, true);
+    } finally {
+      $("saveTimesBtn").disabled = false;
+    }
+  });
+
+  $("feedBtn").addEventListener("click", async () => {
+    if (!currentUser || feedPending) return;
+    try {
+      feedPending = true;
+      $("feedBtn").disabled = true;
+      $("feedInfo").textContent = "Đang gửi lệnh đến Firebase…";
+      const now = Date.now();
+      // Một cập nhật nguyên tử giúp command và commandAt luôn khớp.
+      await update(ref(db, "feeder"), {
+        command: "FEED",
+        commandAt: now,
+        updatedAt: now
+      });
+      $("feedInfo").textContent = "Đã gửi lệnh. Servo sẽ chạy khi ESP8266 nhận được lệnh.";
+      notice("Đã gửi lệnh cho ăn thủ công.");
+    } catch (e) {
+      $("feedInfo").textContent = "Gửi lệnh thất bại.";
+      notice("Không gửi được lệnh: " + e.message, true);
+    } finally {
+      setTimeout(() => {
+        feedPending = false;
+        $("feedBtn").disabled = !currentUser;
+      }, 2500);
+    }
+  });
+
+  onAuthStateChanged(auth, user => {
+    currentUser = user;
+    $("logoutBtn").disabled = !user;
+    $("feedBtn").disabled = !user;
+    $("saveTimesBtn").disabled = !user;
+    $("loginCard").classList.toggle("hidden", false);
+    if (unsubscribeFeeder) { unsubscribeFeeder(); unsubscribeFeeder = null; }
+    if (!user) {
+      $("deviceStatus").textContent = "Chưa đăng nhập";
+      $("feedInfo").textContent = "Đăng nhập để điều khiển thiết bị.";
+      notice("Hãy đăng nhập bằng tài khoản Firebase Authentication.");
+      return;
+    }
+    unsubscribeFeeder = onValue(ref(db, "feeder"), snapshot => {
+      const data = snapshot.val() || {};
+      $("deviceStatus").textContent = data.status || "Chưa có trạng thái";
+      const updated = Number(data.updatedAt || 0);
+      $("updatedAt").textContent = updated ? new Date(updated).toLocaleString("vi-VN") : "—";
+      if (data.scheduleTimes && typeof data.scheduleTimes === "object") {
+        const loaded = Object.keys(data.scheduleTimes).filter(k => data.scheduleTimes[k] === true)
+          .filter(t => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)).sort();
+        if (loaded.length) { times = loaded; renderTimes(); }
+        else if (Object.keys(data.scheduleTimes).length === 0) { times = []; renderTimes(); }
+      }
+    }, error => notice("Không đọc được dữ liệu Firebase: " + error.message, true));
+    notice("Đã đăng nhập. Có thể cài lịch và gửi lệnh.");
+  });
+
+  renderTimes();
 </script>
 </body>
 </html>
