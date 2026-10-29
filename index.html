@@ -89,17 +89,16 @@
 
   // GIỮ CẤU HÌNH WEB FIREBASE ĐANG DÙNG NẾU BẠN ĐÃ CÓ.
   // Lấy trong Firebase Console > Project settings > Your apps > Web app.
-  const firebaseConfig = {
-  apiKey: "AIzaSyA7TMuCoNnjg_2vjRX1vA2wcoHK0zy4xOw",
-  authDomain: "chocaan-1ab5d.firebaseapp.com",
-  databaseURL: "https://chocaan-1ab5d-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "chocaan-1ab5d",
-  storageBucket: "chocaan-1ab5d.firebasestorage.app",
-  messagingSenderId: "945930258736",
-  appId: "1:945930258736:web:ba6e7cadde4ef243bb60f5",
-  measurementId: "G-FJ29DVKKHT"
+ const firebaseConfig = { 
+  apiKey : "AIzaSyA7TMuCoNnjg_2vjRX1vA2wcoHK0zy4xOw" , 
+  authDomain : "chocaan-1ab5d.firebaseapp.com" , 
+  URL cơ sở dữ liệu : "https://chocaan-1ab5d-default-rtdb.asia-southeast1.firebasedatabase.app" , 
+  projectId : "chocaan-1ab5d" , 
+  storageBucket : "chocaan-1ab5d.firebasestorage.app" , 
+  messagingSenderId : "945930258736" , 
+  appId : "1:945930258736:web:ba6e7cadde4ef243bb60f5" , 
+  measurementId : "G-FJ29DVKKHT" 
 };
-
   const $ = id => document.getElementById(id);
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
